@@ -27,7 +27,8 @@ func init() {
 }
 
 // Running as a go test:
-// `go test -run=TestFullAppSimulation ./app -NumBlocks 200 -BlockSize 50 -Commit true Verbose true -Enabled true“
+//
+// go test -v -run=TestFullAppSimulation ./app -NumBlocks 200 -BlockSize 50 -Commit -Enabled -Seed 40
 func TestFullAppSimulation(t *testing.T) {
 	config := simcli.NewConfigFromFlags()
 	config.ChainID = simulationAppChainID
@@ -74,7 +75,7 @@ func TestFullAppSimulation(t *testing.T) {
 		simtestutil.AppStateFn(app.AppCodec(), app.SimulationManager(), app.DefaultGenesis()),
 		simtypes.RandomAccounts,
 		simtestutil.SimulationOperations(app, app.AppCodec(), config),
-		map[string]bool{},
+		app.BankKeeper.GetBlockedAddresses(),
 		config,
 		app.AppCodec(),
 	)
