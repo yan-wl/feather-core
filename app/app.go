@@ -38,6 +38,8 @@ import (
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 
+	"github.com/cosmos/cosmos-sdk/x/consensus"
+
 	"github.com/cosmos/cosmos-sdk/x/auth/vesting"
 	vestingtypes "github.com/cosmos/cosmos-sdk/x/auth/vesting/types"
 
@@ -88,6 +90,10 @@ import (
 	mintkeeper "github.com/cosmos/cosmos-sdk/x/mint/keeper"
 	minttypes "github.com/cosmos/cosmos-sdk/x/mint/types"
 
+	"github.com/cosmos/cosmos-sdk/x/nft"
+	nftkeeper "github.com/cosmos/cosmos-sdk/x/nft/keeper"
+	nftmodule "github.com/cosmos/cosmos-sdk/x/nft/module"
+
 	"github.com/cosmos/cosmos-sdk/x/params"
 	paramsclient "github.com/cosmos/cosmos-sdk/x/params/client"
 	paramskeeper "github.com/cosmos/cosmos-sdk/x/params/keeper"
@@ -127,6 +133,9 @@ import (
 
 	alliancebank "github.com/terra-money/alliance/custom/bank"
 	alliancebankkeeper "github.com/terra-money/alliance/custom/bank/keeper"
+	alliance "github.com/terra-money/alliance/x/alliance"
+	alliancekeeper "github.com/terra-money/alliance/x/alliance/keeper"
+	alliancetypes "github.com/terra-money/alliance/x/alliance/types"
 
 	"github.com/terra-money/feather-core/app/openapiconsole"
 	appparams "github.com/terra-money/feather-core/app/params"
@@ -138,8 +147,6 @@ const (
 	Name                 = "feather-core"
 )
 
-// this line is used by starport scaffolding # stargate/wasm/app/enabledProposals
-
 // TODO: What is this?
 func getGovProposalHandlers() []govclient.ProposalHandler {
 	var govProposalHandlers []govclient.ProposalHandler
@@ -147,7 +154,6 @@ func getGovProposalHandlers() []govclient.ProposalHandler {
 
 	govProposalHandlers = append(govProposalHandlers,
 		paramsclient.ProposalHandler,
-		// distrclient.ProposalHandler,
 		upgradeclient.LegacyProposalHandler,
 		upgradeclient.LegacyCancelProposalHandler,
 		ibcclientclient.UpdateClientProposalHandler,
@@ -164,35 +170,6 @@ func getGovProposalHandlers() []govclient.ProposalHandler {
 var (
 	// DefaultNodeHome default home directories for the application daemon
 	DefaultNodeHome string
-
-	// ModuleBasics defines the module BasicManager is in charge of setting up basic,
-	// non-dependant module elements, such as codec registration
-	// and genesis verification.
-	ModuleBasics = module.NewBasicManager(
-		auth.AppModuleBasic{},
-		bank.AppModuleBasic{},
-		authzmodule.AppModuleBasic{},
-		capability.AppModuleBasic{},
-		crisis.AppModuleBasic{},
-		feegrantmodule.AppModuleBasic{},
-		groupmodule.AppModuleBasic{},
-		staking.AppModuleBasic{},
-		mint.AppModuleBasic{},
-		slashing.AppModuleBasic{},
-		gov.NewAppModuleBasic(getGovProposalHandlers()),
-		genutil.AppModuleBasic{},
-		vesting.AppModuleBasic{},
-		distr.AppModuleBasic{},
-		params.AppModuleBasic{},
-		ibc.AppModuleBasic{},
-		upgrade.AppModuleBasic{},
-		evidence.AppModuleBasic{},
-		ibctransfer.AppModuleBasic{},
-		ica.AppModuleBasic{},
-		wasm.AppModuleBasic{},
-		// alliance.AppModuleBasic{},
-		// this line is used by starport scaffolding # stargate/app/moduleBasic
-	)
 )
 
 var (
@@ -238,6 +215,7 @@ type App struct {
 	GovKeeper             govkeeper.Keeper
 	CrisisKeeper          *crisiskeeper.Keeper
 	UpgradeKeeper         *upgradekeeper.Keeper
+	NftKeeper             nftkeeper.Keeper
 	ParamsKeeper          paramskeeper.Keeper
 	IBCKeeper             *ibckeeper.Keeper // IBC Keeper must be a pointer in the app, so we can SetRouter on it correctly
 	EvidenceKeeper        evidencekeeper.Keeper
@@ -247,7 +225,10 @@ type App struct {
 	GroupKeeper           groupkeeper.Keeper
 	WasmKeeper            wasm.Keeper
 	ConsensusParamsKeeper consensuskeeper.Keeper
-	// AllianceKeeper        alliancekeeper.Keeper
+	AllianceKeeper        alliancekeeper.Keeper
+
+	// bm is the basic module manager
+	bm module.BasicManager
 
 	// mm is the module manager
 	mm *module.Manager
@@ -295,6 +276,7 @@ func New(
 	app.SetVersion(version.Version)
 	app.SetInterfaceRegistry(interfaceRegistry)
 
+	var basicModules []module.AppModuleBasic = make([]module.AppModuleBasic, 0)
 	var modules []module.AppModule = make([]module.AppModule, 0)
 	var simModules []module.AppModuleSimulation = make([]module.AppModuleSimulation, 0)
 
@@ -312,6 +294,7 @@ func New(
 		app.AuthKeeper.GetModulePermissions()[authtypes.FeeCollectorName] = authtypes.NewPermissionsForAddress(authtypes.FeeCollectorName, nil) // This implicitly creates a module account
 		app.BankKeeper.GetBlockedAddresses()[authtypes.NewModuleAddress(authtypes.FeeCollectorName).String()] = true
 	}()
+	basicModules = append(basicModules, auth.AppModuleBasic{})
 	modules = append(modules, auth.NewAppModule(appCodec, app.AuthKeeper, nil, nil))
 	simModules = append(simModules, auth.NewAppModule(appCodec, app.AuthKeeper, authsim.RandomGenesisAccounts, nil)) // TODO: Is RandomGenesisAccounts right?
 
@@ -325,6 +308,7 @@ func New(
 		make(map[string]bool),
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, bank.AppModuleBasic{})
 	modules = append(modules, alliancebank.NewAppModule(appCodec, app.BankKeeper, app.AuthKeeper, nil))
 	simModules = append(simModules, alliancebank.NewAppModule(appCodec, app.BankKeeper, app.AuthKeeper, nil))
 
@@ -338,6 +322,7 @@ func New(
 		app.MsgServiceRouter(), // TODO: Find out what this is
 		app.AuthKeeper,
 	)
+	basicModules = append(basicModules, authzmodule.AppModuleBasic{})
 	modules = append(modules, authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 	simModules = append(simModules, authzmodule.NewAppModule(appCodec, app.AuthzKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 
@@ -350,6 +335,7 @@ func New(
 		app.memKeys[capabilitytypes.MemStoreKey],
 	)
 	defer app.CapabilityKeeper.Seal()
+	basicModules = append(basicModules, capability.AppModuleBasic{})
 	modules = append(modules, capability.NewAppModule(appCodec, *app.CapabilityKeeper, false)) // TODO: Find out what is sealkeeper
 	simModules = append(simModules, capability.NewAppModule(appCodec, *app.CapabilityKeeper, false))
 
@@ -361,6 +347,8 @@ func New(
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	app.SetParamStore(&app.ConsensusParamsKeeper)
+	basicModules = append(basicModules, consensus.AppModuleBasic{})
+	modules = append(modules, consensus.NewAppModule(appCodec, app.ConsensusParamsKeeper))
 
 	// 'crisis' module - depends on
 	// 1. 'bank'
@@ -373,6 +361,7 @@ func New(
 		authtypes.FeeCollectorName,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, crisis.AppModuleBasic{})
 	modules = append(modules, crisis.NewAppModule(app.CrisisKeeper, cast.ToBool(appOpts.Get(crisis.FlagSkipGenesisInvariants)), nil))
 
 	// 'feegrant' module - depends on
@@ -384,6 +373,7 @@ func New(
 		app.keys[feegrant.StoreKey],
 		app.AuthKeeper,
 	)
+	basicModules = append(basicModules, feegrantmodule.AppModuleBasic{})
 	modules = append(modules, feegrantmodule.NewAppModule(appCodec, app.AuthKeeper, app.BankKeeper, app.FeeGrantKeeper, app.interfaceRegistry))
 	simModules = append(simModules, feegrantmodule.NewAppModule(appCodec, app.AuthKeeper, app.BankKeeper, app.FeeGrantKeeper, app.interfaceRegistry))
 
@@ -398,6 +388,7 @@ func New(
 		app.AuthKeeper,
 		group.DefaultConfig(),
 	)
+	basicModules = append(basicModules, groupmodule.AppModuleBasic{})
 	modules = append(modules, groupmodule.NewAppModule(appCodec, app.GroupKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 	simModules = append(simModules, groupmodule.NewAppModule(appCodec, app.GroupKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 
@@ -416,6 +407,7 @@ func New(
 		app.BankKeeper,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, staking.AppModuleBasic{})
 	modules = append(modules, staking.NewAppModule(appCodec, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, nil))
 	simModules = append(simModules, staking.NewAppModule(appCodec, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, nil))
 
@@ -435,10 +427,20 @@ func New(
 		authtypes.FeeCollectorName, // TODO: Find out what this is
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, mint.AppModuleBasic{})
 	modules = append(modules, mint.NewAppModule(appCodec, app.MintKeeper, app.AuthKeeper, nil, nil))
 	simModules = append(simModules, mint.NewAppModule(appCodec, app.MintKeeper, app.AuthKeeper, nil, nil))
 
-	// TODO: 'nft' module
+	// 'nft' module - depends on
+	// 1. 'auth'
+	// 2. 'bank'
+	app.AuthKeeper.GetModulePermissions()[nft.ModuleName] = authtypes.NewPermissionsForAddress(nft.ModuleName, nil)
+	app.BankKeeper.GetBlockedAddresses()[authtypes.NewModuleAddress(nft.ModuleName).String()] = true
+	app.keys[nftkeeper.StoreKey] = storetypes.NewKVStoreKey(nftkeeper.StoreKey)
+	app.NftKeeper = nftkeeper.NewKeeper(app.keys[nftkeeper.StoreKey], appCodec, app.AuthKeeper, app.BankKeeper)
+	basicModules = append(basicModules, nftmodule.AppModuleBasic{})
+	modules = append(modules, nftmodule.NewAppModule(appCodec, app.NftKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
+	simModules = append(simModules, nftmodule.NewAppModule(appCodec, app.NftKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 
 	// 'slashing' module - depends on
 	// 1. 'staking'
@@ -452,6 +454,7 @@ func New(
 		app.StakingKeeper,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, slashing.AppModuleBasic{})
 	modules = append(modules, slashing.NewAppModule(appCodec, app.SlashingKeeper, app.AuthKeeper, app.BankKeeper, app.StakingKeeper, nil))
 	simModules = append(simModules, slashing.NewAppModule(appCodec, app.SlashingKeeper, app.AuthKeeper, app.BankKeeper, app.StakingKeeper, nil))
 
@@ -475,6 +478,7 @@ func New(
 	govLegacyRouter := govv1beta1.NewRouter()
 	defer app.GovKeeper.SetLegacyRouter(govLegacyRouter)
 	govLegacyRouter.AddRoute(govtypes.RouterKey, govv1beta1.ProposalHandler)
+	basicModules = append(basicModules, gov.NewAppModuleBasic(getGovProposalHandlers())) // TODO: Do we need the legacy proposal handlers?
 	modules = append(modules, gov.NewAppModule(appCodec, &app.GovKeeper, app.AuthKeeper, app.BankKeeper, nil))
 	simModules = append(simModules, gov.NewAppModule(appCodec, &app.GovKeeper, app.AuthKeeper, app.BankKeeper, nil))
 
@@ -495,6 +499,7 @@ func New(
 		authtypes.FeeCollectorName,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
+	basicModules = append(basicModules, distr.AppModuleBasic{})
 	modules = append(modules, distr.NewAppModule(appCodec, app.DistrKeeper, app.AuthKeeper, app.BankKeeper, app.StakingKeeper, nil))
 	simModules = append(simModules, distr.NewAppModule(appCodec, app.DistrKeeper, app.AuthKeeper, app.BankKeeper, app.StakingKeeper, nil))
 
@@ -509,6 +514,7 @@ func New(
 		app.tkeys[paramstypes.TStoreKey],
 	)
 	govLegacyRouter.AddRoute(paramsproposaltypes.RouterKey, params.NewParamChangeProposalHandler(app.ParamsKeeper))
+	basicModules = append(basicModules, params.AppModuleBasic{})
 	modules = append(modules, params.NewAppModule(app.ParamsKeeper))
 	simModules = append(simModules, params.NewAppModule(app.ParamsKeeper))
 
@@ -522,6 +528,7 @@ func New(
 		app.StakingKeeper,
 		app.SlashingKeeper,
 	)
+	basicModules = append(basicModules, evidence.AppModuleBasic{})
 	modules = append(modules, evidence.NewAppModule(app.EvidenceKeeper))
 	simModules = append(simModules, evidence.NewAppModule(app.EvidenceKeeper))
 
@@ -537,6 +544,7 @@ func New(
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	govLegacyRouter.AddRoute(upgradetypes.RouterKey, upgrade.NewSoftwareUpgradeProposalHandler(app.UpgradeKeeper))
+	basicModules = append(basicModules, upgrade.AppModuleBasic{})
 	modules = append(modules, upgrade.NewAppModule(app.UpgradeKeeper))
 
 	// 'ibc' module - depends on
@@ -556,6 +564,7 @@ func New(
 	)
 	// app.IBCKeeper.SetRouter(ibcporttypes.NewRouter())
 	govLegacyRouter.AddRoute(ibcexported.RouterKey, ibcclient.NewClientProposalHandler(app.IBCKeeper.ClientKeeper))
+	basicModules = append(basicModules, ibc.AppModuleBasic{})
 	modules = append(modules, ibc.NewAppModule(app.IBCKeeper))
 	simModules = append(simModules, ibc.NewAppModule(app.IBCKeeper))
 
@@ -579,6 +588,7 @@ func New(
 		app.CapabilityKeeper.ScopeToModule(ibctransfertypes.ModuleName),
 	)
 	// app.IBCKeeper.Router.AddRoute(ibctransfertypes.ModuleName, transfer.NewIBCModule(app.TransferKeeper))
+	basicModules = append(basicModules, ibctransfer.AppModuleBasic{})
 	modules = append(modules, ibctransfer.NewAppModule(app.TransferKeeper))
 	simModules = append(simModules, ibctransfer.NewAppModule(app.TransferKeeper))
 
@@ -619,6 +629,7 @@ func New(
 		app.MsgServiceRouter(),
 	)
 	// app.IBCKeeper.Router.AddRoute(icahosttypes.SubModuleName, icahost.NewIBCModule(app.ICAHostKeeper))
+	basicModules = append(basicModules, ica.AppModuleBasic{})
 	modules = append(modules, ica.NewAppModule(&icaControllerKeeper, &app.ICAHostKeeper))
 	simModules = append(simModules, ica.NewAppModule(&icaControllerKeeper, &app.ICAHostKeeper))
 
@@ -657,6 +668,7 @@ func New(
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	govLegacyRouter.AddRoute(wasm.RouterKey, wasm.NewWasmProposalHandler(app.WasmKeeper, wasm.EnableAllProposals))
+	basicModules = append(basicModules, wasm.AppModuleBasic{})
 	modules = append(modules, wasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, app.MsgServiceRouter(), nil))
 	simModules = append(simModules, wasm.NewAppModule(appCodec, &app.WasmKeeper, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, app.MsgServiceRouter(), nil))
 
@@ -666,46 +678,52 @@ func New(
 	// 3. 'staking'
 	// 4. 'distribution'
 	// 5. 'gov'
-	// app.BankKeeper.RegisterKeepers(app.AllianceKeeper, app.StakingKeeper)
-	// app.AuthKeeper.GetModulePermissions()[alliancetypes.ModuleName] = authtypes.NewPermissionsForAddress(alliancetypes.ModuleName, []string{authtypes.Minter, authtypes.Burner})
-	// app.AuthKeeper.GetModulePermissions()[alliancetypes.RewardsPoolName] = authtypes.NewPermissionsForAddress(alliancetypes.RewardsPoolName, nil)
-	// app.BankKeeper.GetBlockedAddresses()[authtypes.NewModuleAddress(alliancetypes.RewardsPoolName).String()] = true
-	// app.keys[alliancetypes.StoreKey] = storetypes.NewKVStoreKey(alliancetypes.StoreKey)
-	// app.AllianceKeeper = alliancekeeper.NewKeeper(
-	// 	appCodec,
-	// 	app.keys[alliancetypes.StoreKey],
-	// 	app.ParamsKeeper.Subspace(alliancetypes.ModuleName),
-	// 	app.AuthKeeper,
-	// 	app.BankKeeper,
-	// 	app.StakingKeeper,
-	// 	app.DistrKeeper,
-	// )
-	// govLegacyRouter.AddRoute(alliancetypes.RouterKey, alliance.NewAllianceProposalHandler(app.AllianceKeeper))
+	app.BankKeeper.RegisterKeepers(app.AllianceKeeper, app.StakingKeeper)
+	app.AuthKeeper.GetModulePermissions()[alliancetypes.ModuleName] = authtypes.NewPermissionsForAddress(alliancetypes.ModuleName, []string{authtypes.Minter, authtypes.Burner})
+	app.AuthKeeper.GetModulePermissions()[alliancetypes.RewardsPoolName] = authtypes.NewPermissionsForAddress(alliancetypes.RewardsPoolName, nil)
+	app.BankKeeper.GetBlockedAddresses()[authtypes.NewModuleAddress(alliancetypes.RewardsPoolName).String()] = true
+	app.keys[alliancetypes.StoreKey] = storetypes.NewKVStoreKey(alliancetypes.StoreKey)
+	app.AllianceKeeper = alliancekeeper.NewKeeper(
+		appCodec,
+		app.keys[alliancetypes.StoreKey],
+		app.ParamsKeeper.Subspace(alliancetypes.ModuleName),
+		app.AuthKeeper,
+		app.BankKeeper,
+		app.StakingKeeper,
+		app.DistrKeeper,
+	)
+	govLegacyRouter.AddRoute(alliancetypes.RouterKey, alliance.NewAllianceProposalHandler(app.AllianceKeeper))
+	basicModules = append(basicModules, alliance.AppModuleBasic{})
 	// modules = append(modules, alliance.NewAppModule(appCodec, app.AllianceKeeper, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 	// simModules = append(simModules, alliance.NewAppModule(appCodec, app.AllianceKeeper, app.StakingKeeper, app.AuthKeeper, app.BankKeeper, app.interfaceRegistry))
 
 	// 'genutil' module - depends on
 	// 1. 'auth'
 	// 2. 'staking'
+	basicModules = append(basicModules, genutil.AppModuleBasic{})
 	modules = append(modules, genutil.NewAppModule(app.AuthKeeper, app.StakingKeeper, app.BaseApp.DeliverTx, encodingConfig.TxConfig))
 
 	// 'vesting' module - depends on
 	// 1. 'auth'
 	// 2. 'bank'
+	basicModules = append(basicModules, vesting.AppModuleBasic{})
 	modules = append(modules, vesting.NewAppModule(app.AuthKeeper, app.BankKeeper))
 
 	// post handling
-	app.StakingKeeper.SetHooks(
-		stakingtypes.NewMultiStakingHooks(app.DistrKeeper.Hooks(),
-			app.SlashingKeeper.Hooks(),
-			// app.AllianceKeeper.StakingHooks(),
-		),
-	)
+	app.StakingKeeper.SetHooks(stakingtypes.NewMultiStakingHooks(
+		app.DistrKeeper.Hooks(),
+		app.SlashingKeeper.Hooks(),
+		// app.AllianceKeeper.StakingHooks(),
+	))
 
 	/****  Module Options ****/
 
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
+
+	app.bm = module.NewBasicManager(basicModules...)
+	app.bm.RegisterLegacyAminoCodec(encodingConfig.Amino)
+	app.bm.RegisterInterfaces(encodingConfig.InterfaceRegistry)
 
 	app.mm = module.NewManager(modules...)
 
@@ -718,6 +736,7 @@ func New(
 		upgradetypes.ModuleName,
 		capabilitytypes.ModuleName,
 		minttypes.ModuleName,
+		consensustypes.ModuleName,
 		distrtypes.ModuleName,
 		slashingtypes.ModuleName,
 		evidencetypes.ModuleName,
@@ -735,6 +754,7 @@ func New(
 		group.ModuleName,
 		paramstypes.ModuleName,
 		vestingtypes.ModuleName,
+		nft.ModuleName,
 		// alliancetypes.ModuleName,
 		wasm.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/beginBlockers
@@ -744,6 +764,7 @@ func New(
 		crisistypes.ModuleName,
 		govtypes.ModuleName,
 		stakingtypes.ModuleName,
+		consensustypes.ModuleName,
 		ibctransfertypes.ModuleName,
 		ibcexported.ModuleName,
 		icatypes.ModuleName,
@@ -761,6 +782,7 @@ func New(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		vestingtypes.ModuleName,
+		nft.ModuleName,
 		// alliancetypes.ModuleName,
 		wasm.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/endBlockers
@@ -778,6 +800,7 @@ func New(
 		distrtypes.ModuleName,
 		stakingtypes.ModuleName,
 		slashingtypes.ModuleName,
+		consensustypes.ModuleName,
 		govtypes.ModuleName,
 		minttypes.ModuleName,
 		crisistypes.ModuleName,
@@ -792,6 +815,7 @@ func New(
 		paramstypes.ModuleName,
 		upgradetypes.ModuleName,
 		vestingtypes.ModuleName,
+		nft.ModuleName,
 		// alliancetypes.ModuleName,
 		wasm.ModuleName,
 		// this line is used by starport scaffolding # stargate/app/initGenesis
@@ -929,7 +953,7 @@ func (app *App) RegisterAPIRoutes(apiSvr *api.Server, apiConfig config.APIConfig
 	tmservice.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 
 	// Register grpc-gateway routes for all modules.
-	ModuleBasics.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
+	app.bm.RegisterGRPCGatewayRoutes(clientCtx, apiSvr.GRPCGatewayRouter)
 
 	// register app's OpenAPI routes.
 	apiSvr.Router.Handle("/static/openapi.yml", http.FileServer(http.FS(docs.Docs)))
@@ -961,6 +985,10 @@ func (app *App) SimulationManager() *module.SimulationManager {
 }
 
 // DefaultGenesis returns a default genesis from the registered AppModuleBasic's.
-func (a *App) DefaultGenesis() map[string]json.RawMessage {
-	return ModuleBasics.DefaultGenesis(a.appCodec)
+func (app *App) DefaultGenesis() map[string]json.RawMessage {
+	return app.bm.DefaultGenesis(app.appCodec)
+}
+
+func (app *App) Basic() module.BasicManager {
+	return app.bm
 }
