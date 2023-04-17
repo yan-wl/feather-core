@@ -43,7 +43,6 @@ transformations:
       - "*/**.go"
       - "README.md"
       - "Makefile"
-      - "Dockerfile"
       - "docs/static/openapi.yml"
       - "config/**/genesis.json"
 
