@@ -43,9 +43,8 @@ transformations:
     files:
       - "*/**.go"
       - "README.md"
-      - "Makefile"
       - "docs/static/openapi.yml"
-      - "config/**/genesis.json"
+      - "config/mainnet/config.json"
 
   - name: account prefix
     type: replace
@@ -53,7 +52,7 @@ transformations:
     replacement: "{{ .account_prefix }}"
     files:
       - "app/app.go"
-      - "Makefile"
+      - "config/mainnet/config.json"
 
   - name: bond denom
     type: replace
