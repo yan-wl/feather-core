@@ -80,13 +80,13 @@ all: install lint test
 
 install: go.sum
 	# TODO replace feather-cored with the parsed name
-	go build -o $(BINDIR)/feather-cored -mod=readonly $(BUILD_FLAGS) ./cmd/feather-cored
+	go build -o $(BINDIR)/feather-cored -mod=readonly $(BUILD_FLAGS) ./cmd/feather-core
 
 build: go.sum
 ifeq ($(OS),Windows_NT)
 	exit 1
 else
-	go build -mod=readonly $(BUILD_FLAGS) -o $(BUILDDIR)/feather-cored ./cmd/feather-cored
+	go build -mod=readonly $(BUILD_FLAGS) -o $(BUILDDIR)/feather-cored ./cmd/feather
 endif
 
 build-contract-tests-hooks:
@@ -146,7 +146,7 @@ go.sum: go.mod
 draw-deps:
 	@# requires brew install graphviz or apt-get install graphviz
 	go install github.com/RobotsAndPencils/goviz@latest
-	@goviz -i ./cmd/feather-cored -d 2 | dot -Tpng -o dependency-graph.png
+	@goviz -i ./cmd/feather -d 2 | dot -Tpng -o dependency-graph.png
 
 clean:
 	rm -rf snapcraft-local.yaml build/
