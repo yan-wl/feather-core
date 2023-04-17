@@ -66,4 +66,5 @@ transformations:
     pattern: stake
     replacement: "{{ .bond_denom }}"
     files:
-      - "config/**/*.json"
+      - "config/localnet/config.json"
+      - "config/mainnet/config.json"
