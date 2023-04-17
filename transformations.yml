@@ -41,7 +41,6 @@ transformations:
     pattern: feather-core
     replacement: "{{ .chain_name }}"
     files:
-      - "*/**.go"
       - "README.md"
       - "docs/static/openapi.yml"
       - "config/mainnet/config.json"
@@ -51,7 +50,6 @@ transformations:
     pattern: feath
     replacement: "{{ .account_prefix }}"
     files:
-      - "app/app.go"
       - "config/mainnet/config.json"
 
   - name: bond denom
