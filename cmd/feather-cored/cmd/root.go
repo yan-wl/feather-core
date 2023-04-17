@@ -55,7 +55,7 @@ func NewRootCmd() (*cobra.Command, appparams.EncodingConfig) {
 		WithViper("")
 
 	rootCmd := &cobra.Command{
-		Use:   app.Name + "d",
+		Use:   app.AppName + "d",
 		Short: "Stargate CosmosHub App",
 		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
 			// set the default command outputs
@@ -84,7 +84,7 @@ func NewRootCmd() (*cobra.Command, appparams.EncodingConfig) {
 
 	initRootCmd(rootCmd, encodingConfig)
 	overwriteFlagDefaults(rootCmd, map[string]string{
-		flags.FlagChainID:        strings.ReplaceAll(app.Name, "-", ""),
+		flags.FlagChainID:        strings.ReplaceAll(app.AppName, "-", ""),
 		flags.FlagKeyringBackend: "test",
 	})
 
