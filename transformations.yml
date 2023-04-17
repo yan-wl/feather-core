@@ -46,13 +46,6 @@ transformations:
       - "docs/static/openapi.yml"
       - "config/**/genesis.json"
 
-  - name: rename cmd
-    type: rename
-    pattern: feather-cored
-    replacement: "{{ .chain_name }}d"
-    files:
-      - "cmd/**"
-
   - name: account prefix
     type: replace
     pattern: feath
