@@ -47,7 +47,7 @@ transformations:
 
   - name: account prefix
     type: replace
-    pattern: feath
+    pattern: pfeath
     replacement: "{{ .account_prefix }}"
     files:
       - "config/mainnet/config.json"
