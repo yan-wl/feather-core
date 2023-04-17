@@ -9,6 +9,7 @@ COMMIT := $(shell git log -1 --format='%H')
 VERSION := $(shell echo $(shell git describe --tags) | sed 's/^v//')
 SDK_PACK := $(shell go list -m github.com/cosmos/cosmos-sdk | sed  's/ /\@/g')
 GO_VERSION := $(shell cat go.mod | grep -E 'go [0-9].[0-9]+' | cut -d ' ' -f 2)
+JQ := $(shell which jq)
 
 # for dockerized protobuf tools
 BUF_IMAGE=bufbuild/buf@sha256:3cb1f8a4b48bd5ad8f09168f10f607ddc318af202f5c057d52a45216793d85e5 #v1.4.0
@@ -16,6 +17,14 @@ DOCKER_BUF := $(DOCKER) run --rm -v $(CURDIR):/workspace --workdir /workspace $(
 HTTPS_GIT := https://github.com/CosmWasm/wasmd.git
 
 export GO111MODULE = on
+
+# ensure jq is installed
+
+ifeq (, $(JQ))
+	$(error "jq" is not installed. Please install it with your package manager.)
+endif
+FEATH_CONFIG := $(CURDIR)/config/mainnet/config.json
+FEATH_CONFIG_APP_BINARY_NAME := $(shell jq '.app_binary_name' $(FEATH_CONFIG))
 
 # process build tags
 
@@ -79,8 +88,7 @@ include contrib/devtools/Makefile
 all: install lint test
 
 install: go.sum
-	# TODO replace feather-cored with the parsed name
-	go build -o $(BINDIR)/feather-cored -mod=readonly $(BUILD_FLAGS) ./cmd/feather-core
+	go build -o $(BINDIR)/$(FEATH_CONFIG_APP_BINARY_NAME) -mod=readonly $(BUILD_FLAGS) ./cmd/feather-core
 
 build: go.sum
 ifeq ($(OS),Windows_NT)
