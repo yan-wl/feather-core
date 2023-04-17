@@ -133,9 +133,11 @@ import (
 	"github.com/terra-money/feather-core/docs"
 )
 
-// DO NOT change the names of these variables!
 // TODO: to prevent other users from changing the names of these vars, we could probably just publish our own package like https://pkg.go.dev/github.com/cosmos/cosmos-sdk/version
 // TODO: this would also avoid having to transform Makefile's ldflags.
+// You may change the values of these variables, but the names MUST remain the same!
+// The values of the variables are only meant for testing purposes.
+// At build time, these values are overridden by the build system with -ldflags.
 var (
 	AccountAddressPrefix       = "feath"
 	AccountPubKeyPrefix        = "feathpub"
