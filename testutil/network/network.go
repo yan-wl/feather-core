@@ -63,7 +63,7 @@ func DefaultConfig() network.Config {
 				baseapp.SetMinGasPrices(val.GetAppConfig().MinGasPrices),
 			)
 		},
-		GenesisState:    app.ModuleBasics.DefaultGenesis(encoding.Marshaler),
+		// GenesisState:    app.ModuleBasics.DefaultGenesis(encoding.Marshaler), // TODO
 		TimeoutCommit:   2 * time.Second,
 		ChainID:         "chain-" + tmrand.NewRand().Str(6),
 		NumValidators:   1,
