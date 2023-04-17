@@ -26,6 +26,7 @@ transformations:
       - "*/**.go"
       - "go.mod"
       - "go.sum"
+      - "Makefile"
 
   - name: package.json paths
     type: replace

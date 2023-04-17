@@ -135,6 +135,7 @@ import (
 
 // DO NOT change the names of these variables!
 // TODO: to prevent other users from changing the names of these vars, we could probably just publish our own package like https://pkg.go.dev/github.com/cosmos/cosmos-sdk/version
+// TODO: this would also avoid having to transform Makefile's ldflags.
 var (
 	AccountAddressPrefix       = "feath"
 	AccountPubKeyPrefix        = "feathpub"
