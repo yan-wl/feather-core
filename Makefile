@@ -80,7 +80,8 @@ include contrib/devtools/Makefile
 all: install lint test
 
 install: go.sum
-	go install -mod=readonly $(BUILD_FLAGS) ./cmd/feather-cored
+	# TODO replace feather-cored with the parsed name
+	go build -o $(BINDIR)/feather-cored -mod=readonly $(BUILD_FLAGS) ./cmd/feather-cored
 
 build: go.sum
 ifeq ($(OS),Windows_NT)
