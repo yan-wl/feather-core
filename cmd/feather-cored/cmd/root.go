@@ -106,21 +106,20 @@ func initRootCmd(
 	initSDKConfig()
 
 	rootCmd.AddCommand(
-		// genutilcli.InitCmd(app.ModuleBasics, app.DefaultNodeHome), // TODO
+		genutilcli.InitCmd(app.ModuleBasics, app.DefaultNodeHome),
 		genutilcli.CollectGenTxsCmd(banktypes.GenesisBalancesIterator{}, app.DefaultNodeHome, genutiltypes.DefaultMessageValidator),
 		genutilcli.MigrateGenesisCmd(),
-		// genutilcli.GenTxCmd(
-		// 	app.ModuleBasics,
-		// 	encodingConfig.TxConfig,
-		// 	banktypes.GenesisBalancesIterator{},
-		// 	app.DefaultNodeHome,
-		// ), // TODO
-		// genutilcli.ValidateGenesisCmd(app.ModuleBasics), // TODO
+		genutilcli.GenTxCmd(
+			app.ModuleBasics,
+			encodingConfig.TxConfig,
+			banktypes.GenesisBalancesIterator{},
+			app.DefaultNodeHome,
+		),
+		genutilcli.ValidateGenesisCmd(app.ModuleBasics),
 		AddGenesisAccountCmd(app.DefaultNodeHome),
 		tmcli.NewCompletionCmd(rootCmd, true),
 		debug.Cmd(),
 		config.Cmd(),
-		// this line is used by starport scaffolding # root/commands
 	)
 
 	a := appCreator{
@@ -165,7 +164,7 @@ func queryCommand() *cobra.Command {
 		authcmd.QueryTxCmd(),
 	)
 
-	// app.ModuleBasics.AddQueryCommands(cmd)
+	app.ModuleBasics.AddQueryCommands(cmd)
 	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
 
 	return cmd
@@ -192,7 +191,7 @@ func txCommand() *cobra.Command {
 		authcmd.GetDecodeCommand(),
 	)
 
-	// app.ModuleBasics.AddTxCommands(cmd) // TODO
+	app.ModuleBasics.AddTxCommands(cmd)
 	cmd.PersistentFlags().String(flags.FlagChainID, "", "The network chain ID")
 
 	return cmd
