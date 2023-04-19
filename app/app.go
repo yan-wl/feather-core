@@ -742,9 +742,6 @@ func New(
 	// NOTE: Any module instantiated in the module manager that is later modified
 	// must be passed by reference here.
 
-	ModuleBasics.RegisterLegacyAminoCodec(encodingConfig.Amino)
-	ModuleBasics.RegisterInterfaces(encodingConfig.InterfaceRegistry)
-
 	app.mm = module.NewManager(modules...)
 
 	// During begin block slashing happens after distr.BeginBlocker so that
