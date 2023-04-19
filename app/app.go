@@ -132,6 +132,7 @@ import (
 	alliancebank "github.com/terra-money/alliance/custom/bank"
 	alliancebankkeeper "github.com/terra-money/alliance/custom/bank/keeper"
 	alliance "github.com/terra-money/alliance/x/alliance"
+	allianceclient "github.com/terra-money/alliance/x/alliance/client"
 	alliancekeeper "github.com/terra-money/alliance/x/alliance/keeper"
 	alliancetypes "github.com/terra-money/alliance/x/alliance/types"
 
@@ -156,9 +157,9 @@ func getGovProposalHandlers() []govclient.ProposalHandler {
 		upgradeclient.LegacyCancelProposalHandler,
 		ibcclientclient.UpdateClientProposalHandler,
 		ibcclientclient.UpgradeProposalHandler,
-		// allianceclient.CreateAllianceProposalHandler,
-		// allianceclient.UpdateAllianceProposalHandler,
-		// allianceclient.DeleteAllianceProposalHandler,
+		allianceclient.CreateAllianceProposalHandler,
+		allianceclient.UpdateAllianceProposalHandler,
+		allianceclient.DeleteAllianceProposalHandler,
 		// this line is used by starport scaffolding # stargate/app/govProposalHandler
 	)
 
@@ -306,15 +307,14 @@ func New(
 		authtypes.ProtoBaseAccount,
 		make(map[string][]string), // This will be populated by each module later
 		AccountAddressPrefix,
-		// sdktypes.Bech32MainPrefix,                                // TODO: This might be wrong
-		authtypes.NewModuleAddress(govtypes.ModuleName).String(), // TODO: Find out what authority means
+		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	defer func() { // TODO: Does deferring this even work?
 		app.AuthKeeper.GetModulePermissions()[authtypes.FeeCollectorName] = authtypes.NewPermissionsForAddress(authtypes.FeeCollectorName, nil) // This implicitly creates a module account
 		app.BankKeeper.GetBlockedAddresses()[authtypes.NewModuleAddress(authtypes.FeeCollectorName).String()] = true
 	}()
 	modules = append(modules, auth.NewAppModule(cdc, app.AuthKeeper, nil, nil))
-	simModules = append(simModules, auth.NewAppModule(cdc, app.AuthKeeper, authsim.RandomGenesisAccounts, nil)) // TODO: Is RandomGenesisAccounts right?
+	simModules = append(simModules, auth.NewAppModule(cdc, app.AuthKeeper, authsim.RandomGenesisAccounts, nil))
 
 	// 'bank' module - depends on
 	// 1. 'auth'
@@ -375,7 +375,7 @@ func New(
 	app.CrisisKeeper = crisiskeeper.NewKeeper(
 		cdc,
 		app.keys[crisistypes.StoreKey],
-		invCheckPeriod, // TODO: Find out what this is
+		invCheckPeriod,
 		app.BankKeeper,
 		authtypes.FeeCollectorName,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
@@ -579,7 +579,7 @@ func New(
 		app.keys[upgradetypes.StoreKey],
 		cdc,
 		homePath,
-		app.BaseApp, // TODO: Maybe pass app?
+		app,
 		authtypes.NewModuleAddress(govtypes.ModuleName).String(),
 	)
 	govLegacyRouter.AddRoute(upgradetypes.RouterKey, upgrade.NewSoftwareUpgradeProposalHandler(app.UpgradeKeeper))
