@@ -120,7 +120,6 @@ func initRootCmd(
 		tmcli.NewCompletionCmd(rootCmd, true),
 		debug.Cmd(),
 		config.Cmd(),
-		// this line is used by starport scaffolding # root/commands
 	)
 
 	a := appCreator{

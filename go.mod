@@ -12,7 +12,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
-	github.com/terra-money/alliance v0.1.1-0.20230407062204-22bd3868e911
+	github.com/terra-money/alliance v0.1.1-0.20230419073040-6b1152499a1a
 )
 
 require (
@@ -26,7 +26,6 @@ require (
 	cosmossdk.io/depinject v1.0.0-alpha.3 // indirect
 	cosmossdk.io/errors v1.0.0-beta.7 // indirect
 	cosmossdk.io/math v1.0.0 // indirect
-	cosmossdk.io/simapp v0.0.0-20230224204036-a6adb0821462 // indirect
 	cosmossdk.io/tools/rosetta v0.2.1 // indirect
 	filippo.io/edwards25519 v1.0.0 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
@@ -166,3 +165,5 @@ require (
 	pgregory.net/rapid v0.5.5 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+replace github.com/cosmos/cosmos-sdk => github.com/coinhall/cosmos-sdk v0.47.2-0.20230419072921-a93dc6ea28c4
