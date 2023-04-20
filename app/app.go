@@ -230,6 +230,7 @@ type App struct {
 
 	cdc               codec.Codec
 	legacyAmino       *codec.LegacyAmino
+	txConfig          client.TxConfig
 	interfaceRegistry types.InterfaceRegistry
 
 	keys map[string]*storetypes.KVStoreKey
@@ -282,6 +283,7 @@ func New(
 	cdc := encodingConfig.Marshaler
 	legacyAmino := encodingConfig.Amino
 	interfaceRegistry := encodingConfig.InterfaceRegistry
+	txConfig := encodingConfig.TxConfig
 
 	// Init App
 	app := &App{
@@ -295,6 +297,7 @@ func New(
 		cdc:               cdc,
 		legacyAmino:       legacyAmino,
 		interfaceRegistry: interfaceRegistry,
+		txConfig:          txConfig,
 		keys:              make(map[string]*storetypes.KVStoreKey),
 	}
 	defer app.Seal()
@@ -938,6 +941,11 @@ func (app *App) AppCodec() codec.Codec {
 // InterfaceRegistry returns an InterfaceRegistry
 func (app *App) InterfaceRegistry() types.InterfaceRegistry {
 	return app.interfaceRegistry
+}
+
+// TxConfig returns a TxConfig
+func (app *App) TxConfig() client.TxConfig {
+	return app.txConfig
 }
 
 // RegisterAPIRoutes registers all application module routes with the provided
