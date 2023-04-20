@@ -15,7 +15,7 @@ import (
 
 // Hardcoded chainID for simulation.
 const (
-	simulationAppChainID = "simulation"
+	simulationAppChainID = "simulation-app"
 	simulationDirPrefix  = "leveldb-app-sim"
 	simulationDbName     = "Simulation"
 )
@@ -60,7 +60,7 @@ func TestFullAppSimulation(t *testing.T) {
 		simtestutil.EmptyAppOptions{},
 		baseapp.SetChainID(simulationAppChainID),
 	)
-	require.Equal(t, Name, app.Name())
+	require.Equal(t, AppName, app.Name())
 
 	// run randomized simulation
 	_, simParams, simErr := simulation.SimulateFromSeed(
